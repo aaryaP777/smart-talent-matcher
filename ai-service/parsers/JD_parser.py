@@ -1,29 +1,18 @@
 import os
 import json
 import re
-from PyPDF2 import PdfReader
 from langchain_core.prompts import PromptTemplate
 from langchain_ollama.llms import OllamaLLM
+from parsers.text_extractor import extract_text_from_pdf
 
-def extract_text_from_pdf(pdf_path):
-    reader = PdfReader(pdf_path)
-    text = ""
-    for page in reader.pages:
-        text += page.extract_text() or ""
-    return text
+def parse_jd(pdf_path: str) -> dict:
+    if not os.path.exists(pdf_path):
+        raise FileNotFoundError(f"JD file not found at {pdf_path}")
 
-# Path to JD PDF
-pdf_path = "./data/job_description.pdf"
-
-if not os.path.exists(pdf_path):
-    raise FileNotFoundError(f"Job Description file not found at {pdf_path}")
-
-jd_text = extract_text_from_pdf(pdf_path)
-
-# Prompt Template for JD Parsing
-prompt = PromptTemplate(
-    input_variables=["jd_text"],
-    template="""
+    jd_text = extract_text_from_pdf(pdf_path)
+    prompt = PromptTemplate(
+        input_variables=["jd_text"],
+        template="""
     You are an intelligent Job Description (JD) parsing system.  
     Analyze the provided job description text and extract the following details into a structured JSON format.
 
@@ -67,19 +56,15 @@ prompt = PromptTemplate(
     """
 )
 
-llm = OllamaLLM(model="llama3")
-chain = prompt | llm
+    llm = OllamaLLM(model="llama3")
+    chain = prompt | llm
 
-structured_response = chain.invoke({"jd_text": jd_text})
-structured_response = structured_response.replace("```", "").strip()
+    structured_response = chain.invoke({"jd_text": jd_text})
+    structured_response = structured_response.replace("```", "").strip()
+    structured_response = re.sub(r"^.*?(\{)", r"\1", structured_response, flags=re.S)
+    structured_response = re.sub(r"(\}).*$", r"\1", structured_response, flags=re.S)
 
-structured_response = re.sub(r"^.*?(\{)", r"\1", structured_response, flags=re.S)
-structured_response = re.sub(r"(\}).*$", r"\1", structured_response, flags=re.S)
-
-try:
-    parsed_data = json.loads(structured_response)
-    print("Parsed Job Description Data:")
-    print(json.dumps(parsed_data, indent=2))
-except json.JSONDecodeError:
-    print("Model output is not valid JSON. Raw output:")
-    print(structured_response)
+    try:
+        return json.loads(structured_response)
+    except json.JSONDecodeError:
+        return {"error": "Model output is not valid JSON", "raw_output": structured_response}
