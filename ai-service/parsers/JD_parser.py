@@ -56,7 +56,7 @@ def parse_jd(pdf_path: str) -> dict:
     """
 )
 
-    llm = OllamaLLM(model="llama3")
+    llm = OllamaLLM(model="llama3.2")
     chain = prompt | llm
 
     structured_response = chain.invoke({"jd_text": jd_text})

@@ -92,7 +92,7 @@ def parse_resume(pdf_path: str) -> dict:
         """
     )
 
-    llm = OllamaLLM(model="llama3")
+    llm = OllamaLLM(model="llama3.2")
     chain = prompt | llm
 
     structured_response = chain.invoke({"resume_text": resume_text})
