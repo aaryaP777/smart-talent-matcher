@@ -1,72 +1,87 @@
+# ai-service/frontend.py
+
 import streamlit as st
 import requests
-import json
 
 API_URL = "http://127.0.0.1:8000"
 
-st.set_page_config(page_title="Resume & JD Parser", layout="wide")
+st.set_page_config(page_title="Smart Talent Matcher", layout="wide")
 
-st.title("Resume & JD Parser")
+st.title("📄 Smart Talent Matcher")
+
+def upload_and_parse(file, endpoint):
+    """Uploads a file and calls the FastAPI parsing endpoint."""
+    files = {"file": (file.name, file.getvalue(), file.type)}
+    try:
+        response = requests.post(f"{API_URL}{endpoint}", files=files)
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        st.error(f"API Error: {e}")
+        return None
+
+def display_parsed_results(result):
+    """Renders the parsed data and explanations in a structured format."""
+    if not result:
+        return
+
+    st.success("Document Parsed Successfully!")
+    
+    # Display the main parsed data
+    st.subheader("📋 Extracted Information")
+    st.json(result.get("parsed_data", {}))
+
+    # Display the explanations in a collapsible section
+    if "explanation" in result:
+        with st.expander("💡 View AI Explanations (XAI)"):
+            explanations = result.get("explanation", {})
+            for key, desc in explanations.items():
+                st.markdown(f"**{key.replace('_', ' ').title()}:** *{desc}*")
+
+    st.info(f"**Document ID:** `{result.get('doc_id')}` | **Chunks Indexed:** `{result.get('chunks_indexed')}`")
+
+# --- Sidebar and Page Logic ---
 
 page = st.sidebar.radio("Choose an option", ["Parse Resume", "Parse Job Description"])
 
-def upload_and_parse(file, endpoint):
-    """Helper to upload file and call FastAPI"""
-    files = {"file": file}
-    response = requests.post(f"{API_URL}{endpoint}", files=files)
-    if response.status_code == 200:
-        return response.json()
-    else:
-        st.error(f"Error {response.status_code}: {response.json().get('detail')}")
-        return None
-
 if page == "Parse Resume":
-    st.header("📌 Parse Resume")
-    uploaded_file = st.file_uploader("Upload Resume (PDF)", type=["pdf"])
-    if uploaded_file is not None:
+    st.header("📌 Parse a Resume")
+    uploaded_file = st.file_uploader("Upload a resume (PDF)", type=["pdf"])
+    if uploaded_file:
         if st.button("Parse Resume"):
-            with st.spinner("Parsing resume..."):
+            with st.spinner("Analyzing resume and generating explanations..."):
                 result = upload_and_parse(uploaded_file, "/parse-resume")
-                if result:
-                    st.success("Resume Parsed Successfully")
-                    st.json(result)
+                display_parsed_results(result)
 
 elif page == "Parse Job Description":
-    st.header("📌 Parse Job Description")
-    uploaded_file = st.file_uploader("Upload Job Description (PDF)", type=["pdf"])
-    if uploaded_file is not None:
+    st.header("📌 Parse a Job Description")
+    uploaded_file = st.file_uploader("Upload a job description (PDF)", type=["pdf"])
+    if uploaded_file:
         if st.button("Parse JD"):
-            with st.spinner("Parsing job description..."):
+            with st.spinner("Analyzing JD and generating explanations..."):
                 result = upload_and_parse(uploaded_file, "/parse-jd")
-                if result:
-                    st.success("JD Parsed Successfully")
-                    st.json(result)
+                display_parsed_results(result)
+                if result and "doc_id" in result:
+                    st.session_state["jd_id"] = result["doc_id"]
 
-                    # Store JD ID in session state so it survives refresh
-                    st.session_state["jd_id"] = result.get("doc_id")
-
-    # Show matching section only if JD is already parsed
     if "jd_id" in st.session_state:
         st.markdown("---")
-        st.subheader("🔎 Find Matching Resumes")
-
-        top_k = st.number_input("Number of top resumes to fetch", min_value=1, max_value=10, value=3, step=1)
-
+        st.header("🔎 Find Matching Resumes")
+        top_k = st.number_input("Number of top resumes to fetch", 1, 10, 3)
         if st.button("Match Resumes"):
-            with st.spinner("Finding best matching resumes..."):
+            with st.spinner("Searching for the best candidates..."):
+                params = {"jd_id": st.session_state['jd_id'], "top_k": top_k}
                 try:
-                    response = requests.get(f"{API_URL}/match", params={"jd_id": st.session_state['jd_id'], "top_k": top_k})
-                    if response.status_code == 200:
-                        matches_result = response.json()
-                        st.success("Matches Found")
+                    response = requests.get(f"{API_URL}/match", params=params)
+                    response.raise_for_status()
+                    matches_result = response.json()
+                    st.success("Found potential matches!")
+                    
+                    matches = matches_result.get("matches", [])
+                    for i, match in enumerate(matches, 1):
+                        with st.expander(f"**Match {i}** | Similarity: **{match['similarity']:.2%}** | Resume ID: `{match['resume_doc_id']}`"):
+                            st.write("**Matching Snippet from Resume:**")
+                            st.info(f"_{match['chunk']}_")
+                except requests.exceptions.RequestException as e:
+                    st.error(f"Matching Error: {e}")
 
-                        matches = matches_result.get("matches", [])
-                        for i, match in enumerate(matches, start=1):
-                            with st.expander(f"Match {i}: Resume ID {match['resume_doc_id']}"):
-                                st.write(f"**Similarity Score:** {match['similarity']:.4f}")
-                                st.write("**Matching Text Chunk:**")
-                                st.write(match['chunk'])
-                    else:
-                        st.error(f"Error {response.status_code}: {response.text}")
-                except Exception as e:
-                    st.error(f"Request failed: {e}")
