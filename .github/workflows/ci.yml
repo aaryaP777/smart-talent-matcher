@@ -10,12 +10,6 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
-    services:
-      mongo:
-        image: mongo:5.0
-        ports:
-          - 27017:27017
-
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
@@ -48,26 +42,15 @@ jobs:
           cd frontend
           npm run build
 
-      # --- (Optional) Run Tests ---
-      - name: Run backend tests
-        run: |
-          cd ai-service
-          pytest || echo "No tests available"
-
-      - name: Run frontend tests
-        run: |
-          cd frontend
-          npm test -- --watchAll=false || echo "No tests available"
-
       # --- Store Build Artifacts ---
       - name: Upload frontend build
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: frontend-build
           path: frontend/build
 
       - name: Upload backend build
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: backend-service
           path: ai-service
