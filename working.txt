@@ -1,0 +1,12 @@
+Step-2: Ansible
+1. in project root (smart-talent-matcher/).
+2. Run the playbook:
+    ansible-playbook -i ansible/inventory.ini ansible/playbook.yml --ask-become-pass
+
+This will re-provision everything (installs Python, Node, apt deps, and all Python libs including python-multipart inside the venv).
+
+3. Start backend (FastAPI) manually:
+    sudo -u deploy bash -c "source ~/venv/bin/activate && cd ~/ && uvicorn main:app --reload --host 0.0.0.0 --port 8000"
+
+4. Open in browser:
+    👉 http://127.0.0.1:8000/docs
