@@ -27,8 +27,10 @@ metadata:
 spec:
   selector:
     app: backend
+    type: NodePort
   ports:
     - protocol: TCP
       port: 8000
       targetPort: 8000
+      nodePort: 30080
   type: ClusterIP

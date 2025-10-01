@@ -31,4 +31,6 @@ spec:
       port: 8501 # <-- service port
       targetPort: 8501 # <-- must match containerPort
       nodePort: 32520 # optional, fixed NodePort
+    - containerPort: 8501 # Streamlit UI
+    - containerPort: 8502 # Prometheus metrics
   type: NodePort # <-- change LoadBalancer to NodePort for Docker Desktop

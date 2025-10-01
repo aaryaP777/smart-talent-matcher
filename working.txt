@@ -10,3 +10,28 @@ This will re-provision everything (installs Python, Node, apt deps, and all Pyth
 
 4. Open in browser:
     👉 http://127.0.0.1:8000/docs
+
+Step-:3 Dockerization & K8s
+1. Make sure images are built
+    From your project root:
+    docker compose build
+    (Confirms backend and frontend images are up-to-date.)
+
+2. Apply Kubernetes manifests
+
+Backend deployment & service:
+kubectl apply -f backend-deployment.yaml
+Frontend deployment & service:
+kubectl apply -f frontend-deployment.yaml
+Verify pods:
+kubectl get pods
+All should be Running and READY=1/1.
+Verify services:
+kubectl get svc
+Backend: ClusterIP (accessible internally in the cluster)
+Frontend: NodePort 32520 (accessible externally via localhost:32520)
+
+3. Check frontend access
+
+Open browser:
+http://localhost:32520

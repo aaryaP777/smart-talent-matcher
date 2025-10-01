@@ -1,5 +1,8 @@
 # ai-service/frontend.py
-
+from prometheus_client import start_http_server, Counter, Histogram
+import time
+import threading
+import streamlit as st
 import streamlit as st
 import requests
 
@@ -85,3 +88,26 @@ elif page == "Parse Job Description":
                 except requests.exceptions.RequestException as e:
                     st.error(f"Matching Error: {e}")
 
+# Metrics
+FRONTEND_REQUEST_COUNT = Counter('frontend_request_count', 'Total frontend requests')
+FRONTEND_LATENCY = Histogram('frontend_latency_seconds', 'Frontend request latency')
+
+# Run metrics server on separate thread
+def start_metrics():
+    from prometheus_client import start_http_server
+    start_http_server(8502)  # separate port for frontend metrics
+
+threading.Thread(target=start_metrics, daemon=True).start()
+
+# Example metric increment
+def process_user_action():
+    start = time.time()
+    # Your Streamlit logic here
+    time.sleep(0.1)  # simulate processing
+    FRONTEND_LATENCY.observe(time.time() - start)
+    FRONTEND_REQUEST_COUNT.inc()
+
+# Streamlit UI
+if st.button("Click Me"):
+    process_user_action()
+    st.write("Action recorded!")

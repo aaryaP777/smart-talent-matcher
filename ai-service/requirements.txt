@@ -10,3 +10,4 @@ sentence-transformers==2.6.0
 chromadb==0.4.24
 numpy<2.0
 python-multipart
+prometheus_client
